@@ -19,6 +19,15 @@
     .btn-primary:hover { background: #5a2ec4; }
     .btn-secondary { background: rgba(255,255,255,0.15); color: white; }
     .btn-secondary:hover { background: rgba(255,255,255,0.25); }
+    .btn-success { background: #0d9488; color: white; }
+    .btn-success:hover { background: #0f766e; }
+    .btn:disabled { opacity: 0.6; cursor: default; }
+
+    /* 個別保存ボタン（各契約） */
+    .contract-label { display: flex; align-items: center; gap: 10px; }
+    .mini-btn { padding: 4px 12px; border: none; border-radius: 6px; background: #0d9488; color: #fff; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; }
+    .mini-btn:hover { background: #0f766e; }
+    .mini-btn:disabled { opacity: 0.6; cursor: default; }
 
     /* Type selector */
     .type-select { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 22px; }
@@ -102,7 +111,8 @@
   <div class="header-right" id="header-actions" style="display:none">
     <span id="header-count"></span>
     <button class="btn btn-secondary" onclick="resetUpload()">別のCSVを読み込む</button>
-    <button class="btn btn-primary" onclick="window.print()">🖨　全件PDF印刷・保存</button>
+    <button class="btn btn-success" id="btn-export-all" onclick="exportAllIndividual(this)">📥　1件ずつ個別PDF保存</button>
+    <button class="btn btn-primary" onclick="window.print()">🖨　全件まとめてPDF</button>
   </div>
 </div>
 
@@ -139,10 +149,14 @@
   <div class="preview-header">
     <span class="count-badge" id="preview-count-badge">0件</span>
     <span class="plan-label" id="preview-plan-label"></span>
-    <span class="preview-hint">右上の「全件PDF印刷・保存」ボタンで一括出力できます。印刷ダイアログで「PDFとして保存」を選択してください。</span>
+    <span class="preview-hint">「📥 1件ずつ個別PDF保存」で相手の名前を付けて1件ずつ自動保存／「🖨 全件まとめてPDF」は印刷ダイアログから1ファイルで保存できます。</span>
   </div>
   <div id="contracts-area"></div>
 </div>
+
+<!-- 個別PDF保存用ライブラリ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
   // ===== 契約タイプ定義 =====
@@ -332,8 +346,14 @@
   const addYear = w => ({ ...w, year: w.year + 1 });
 
   // ===== レンダリング =====
+  // ファイル名に使えない文字を除去
+  function safeName(s) {
+    return (s || '').replace(/[\\\/:*?"<>|]/g, '_').replace(/[　\s]+/g, ' ').trim();
+  }
+
   function renderContracts(rows) {
     window._loadedRows = rows;
+    window._fileNames = [];
     const area = document.getElementById('contracts-area');
     area.innerHTML = '';
     const three = TYPES[contractType].parties === 'three';
@@ -343,8 +363,15 @@
       const label = three
         ? `${row['乙の名称'] || '乙未入力'} ／ ${row['丙の名称'] || '丙未入力'}`
         : (row['名称'] || '（名称未入力）');
+      // 保存ファイル名＝相手の名前
+      const rawName = three
+        ? `${row['乙の名称'] || '乙'}_${row['丙の名称'] || '丙'}`
+        : (row['名称'] || '契約書');
+      window._fileNames[i] = safeName(rawName) || `契約書_${i + 1}`;
       const html = three ? buildThreeParty(row) : buildTwoParty(row);
-      wrap.innerHTML = `<div class="contract-label">${i+1}件目：${label}</div><div class="contract">${html}</div>`;
+      wrap.innerHTML = `<div class="contract-label">${i+1}件目：${label}`
+        + `<button class="mini-btn" onclick="exportRow(${i}, this)">📥 この契約をPDF保存</button></div>`
+        + `<div class="contract" id="contract-${i}">${html}</div>`;
       area.appendChild(wrap);
     });
     document.getElementById('upload-screen').style.display = 'none';
@@ -361,6 +388,58 @@
     document.getElementById('header-actions').style.display = 'none';
     document.getElementById('contracts-area').innerHTML = '';
     document.getElementById('file-input').value = '';
+  }
+
+  // ===== 個別PDF保存（ファイル名＝相手の名前）=====
+  // 1件の契約要素をA4・複数ページのPDFにして保存
+  async function exportPDF(el, filename) {
+    if (!window.html2canvas || !window.jspdf) {
+      alert('PDF生成ライブラリの読み込み中です。数秒おいて再度お試しください。（ネット接続が必要です）');
+      return false;
+    }
+    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageW = 210, pageH = 297;
+    const imgH = canvas.height * pageW / canvas.width;
+    const img = canvas.toDataURL('image/jpeg', 0.92);
+    let heightLeft = imgH, position = 0;
+    pdf.addImage(img, 'JPEG', 0, position, pageW, imgH);
+    heightLeft -= pageH;
+    while (heightLeft > 0) {
+      position -= pageH;
+      pdf.addPage();
+      pdf.addImage(img, 'JPEG', 0, position, pageW, imgH);
+      heightLeft -= pageH;
+    }
+    pdf.save(filename + '.pdf');
+    return true;
+  }
+
+  // 1件だけ保存
+  async function exportRow(i, btn) {
+    const el = document.getElementById('contract-' + i);
+    if (!el) return;
+    const old = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+    await exportPDF(el, window._fileNames[i]);
+    if (btn) { btn.disabled = false; btn.textContent = old; }
+  }
+
+  // 全件を1件ずつ個別PDFで保存
+  async function exportAllIndividual(btn) {
+    const n = (window._loadedRows || []).length;
+    if (!n) return;
+    const old = btn ? btn.textContent : '';
+    if (btn) btn.disabled = true;
+    for (let i = 0; i < n; i++) {
+      if (btn) btn.textContent = `保存中… ${i + 1}/${n}`;
+      const el = document.getElementById('contract-' + i);
+      const ok = await exportPDF(el, window._fileNames[i]);
+      if (!ok) break;
+      await new Promise(r => setTimeout(r, 400)); // ブラウザの連続DLブロック回避
+    }
+    if (btn) { btn.disabled = false; btn.textContent = old; }
   }
 
   // ===== 二者間契約（一次代理店 ／ URURIA直二次代理店）=====

@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URURIA JAPAN 代理店契約書 統合一括生成システム</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+    /* Header */
+    .header { background: #1a1a2e; color: white; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 54px; position: sticky; top: 0; z-index: 100; }
+    .header h1 { font-size: 14px; font-weight: 700; }
+    .header-right { display: flex; gap: 10px; align-items: center; }
+    .header-right span { font-size: 12px; color: #aaa; }
+
+    .btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; transition: background 0.2s; }
+    .btn-primary { background: #6c3de0; color: white; }
+    .btn-primary:hover { background: #5a2ec4; }
+    .btn-secondary { background: rgba(255,255,255,0.15); color: white; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.25); }
+
+    /* Type selector */
+    .type-select { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 22px; }
+    .type-card { border: 2px solid #ddd; border-radius: 12px; padding: 14px 18px; cursor: pointer; background: white; transition: all 0.2s; min-width: 170px; text-align: left; }
+    .type-card:hover { border-color: #b6a3ef; }
+    .type-card.active { border-color: #6c3de0; background: #f3eeff; box-shadow: 0 2px 10px rgba(108,61,224,0.15); }
+    .type-card .tc-title { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 3px; }
+    .type-card .tc-desc { font-size: 11px; color: #777; line-height: 1.5; }
+
+    /* Plan toggle */
+    .plan-toggle { display: flex; gap: 0; border-radius: 10px; overflow: hidden; border: 2px solid #6c3de0; margin: 0 auto 24px; width: fit-content; }
+    .plan-toggle button { padding: 10px 28px; border: none; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; background: white; color: #6c3de0; transition: all 0.2s; }
+    .plan-toggle button.active { background: #6c3de0; color: white; }
+    .plan-toggle button:hover:not(.active) { background: #f3eeff; }
+    .plan-label { background: #fff3cd; color: #856404; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
+
+    /* Upload screen */
+    #upload-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 54px); padding: 40px 20px; }
+    .upload-card { background: white; border-radius: 16px; padding: 40px 40px; max-width: 640px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.10); text-align: center; }
+    .upload-card .badge { display: inline-block; background: #f3eeff; color: #6c3de0; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; margin-bottom: 14px; }
+    .upload-card h2 { font-size: 19px; color: #1a1a2e; margin-bottom: 8px; }
+    .upload-card p.lead { color: #666; font-size: 14px; line-height: 1.7; margin-bottom: 20px; }
+    .drop-zone { border: 2px dashed #c0b0f0; border-radius: 12px; padding: 28px; background: #faf8ff; margin-bottom: 18px; cursor: pointer; transition: all 0.2s; }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #6c3de0; background: #f3eeff; }
+    .drop-zone p { color: #888; font-size: 13px; margin: 0; }
+    .drop-zone p strong { color: #6c3de0; }
+    #file-input { display: none; }
+    .btn-upload { display: inline-block; padding: 12px 32px; background: #6c3de0; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; margin-bottom: 12px; transition: background 0.2s; }
+    .btn-upload:hover { background: #5a2ec4; }
+    .btn-template { display: inline-block; padding: 10px 24px; background: transparent; color: #6c3de0; border: 2px solid #6c3de0; border-radius: 8px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; transition: all 0.2s; margin-left: 10px; }
+    .btn-template:hover { background: #f3eeff; }
+    .format-hint { background: #f8f8f8; border-radius: 10px; padding: 16px 20px; margin-top: 20px; text-align: left; }
+    .format-hint h3 { font-size: 11px; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    .format-hint code { font-size: 11px; color: #444; font-family: monospace; line-height: 1.8; display: block; white-space: pre; overflow-x: auto; }
+
+    /* Preview screen */
+    #preview-screen { display: none; }
+    .preview-header { background: #f0f2f5; padding: 14px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #ddd; flex-wrap: wrap; }
+    .count-badge { background: #6c3de0; color: white; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+    .preview-hint { font-size: 13px; color: #666; }
+    #contracts-area { padding: 24px; background: #ddd; }
+    .contract-wrapper { margin-bottom: 32px; }
+    .contract-label { font-size: 12px; color: #555; margin-bottom: 6px; font-weight: 600; }
+
+    /* Contract */
+    .contract { background: white; width: 210mm; margin: 0 auto; padding: 20mm 18mm 22mm; box-shadow: 0 4px 20px rgba(0,0,0,0.15); font-family: 'MS Mincho', 'ＭＳ 明朝', 'Hiragino Mincho ProN', 'HiraMinProN-W3', 'Yu Mincho', serif; font-size: 10pt; line-height: 1.95; color: #000; }
+    .contract-title { text-align: center; margin-bottom: 20pt; line-height: 1.6; }
+    .contract-title .t1 { font-size: 13.5pt; font-weight: bold; display: block; }
+    .contract-title .t2 { font-size: 13.5pt; font-weight: bold; display: block; }
+    .preamble { margin-bottom: 16pt; text-align: justify; }
+    .article { margin-bottom: 13pt; }
+    .article-header { font-weight: bold; }
+    .article p { text-align: justify; }
+    .sub-items { margin-left: 1em; }
+    .sub-item { padding-left: 2.5em; text-indent: -2.5em; }
+    .sub-sub-item { padding-left: 1em; text-indent: -1em; margin-left: 3em; }
+    .hr-line { border: none; border-top: 1px solid #000; margin: 18pt 0; }
+    .signature-section { margin-top: 14pt; }
+    .sig-date { margin-bottom: 18pt; }
+    .party-block { margin-bottom: 18pt; }
+
+    /* Print */
+    @media print {
+      body { background: white; }
+      .header { display: none !important; }
+      #upload-screen { display: none !important; }
+      .preview-header { display: none !important; }
+      #contracts-area { padding: 0; background: white; }
+      .contract-wrapper { margin-bottom: 0; }
+      .contract-label { display: none; }
+      .contract { width: 100%; margin: 0; padding: 14mm 14mm; box-shadow: none; page-break-after: always; }
+      .contract:last-child { page-break-after: avoid; }
+      @page { size: A4; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header" id="main-header">
+  <h1>URURIA JAPAN　代理店契約書 統合一括生成システム</h1>
+  <div class="header-right" id="header-actions" style="display:none">
+    <span id="header-count"></span>
+    <button class="btn btn-secondary" onclick="resetUpload()">別のCSVを読み込む</button>
+    <button class="btn btn-primary" onclick="window.print()">🖨　全件PDF印刷・保存</button>
+  </div>
+</div>
+
+<!-- Upload -->
+<div id="upload-screen">
+  <div class="upload-card">
+    <div class="badge" id="type-badge">契約タイプを選択</div>
+    <h2>① 契約タイプを選ぶ</h2>
+    <div class="type-select" id="type-select"></div>
+
+    <h2 style="margin-bottom:10px;">② 金額プランを選ぶ</h2>
+    <div class="plan-toggle" id="plan-toggle"></div>
+
+    <h2 style="margin-bottom:6px;">③ CSVをアップロード</h2>
+    <p class="lead" id="upload-lead"></p>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <p>ここにCSVファイルをドラッグ＆ドロップ<br>または <strong>クリックしてファイルを選択</strong></p>
+    </div>
+    <input type="file" id="file-input" accept=".csv">
+    <div>
+      <button class="btn-upload" onclick="document.getElementById('file-input').click()">CSVを選択してアップロード</button>
+      <button class="btn-template" onclick="downloadTemplate()">テンプレートCSVをダウンロード</button>
+    </div>
+    <div class="format-hint">
+      <h3>CSVのフォーマット（1行目はヘッダー）</h3>
+      <code id="format-code"></code>
+      <p style="font-size:11px;color:#999;margin-top:8px">※ 建物名は空欄でもOK。契約日はYYYY-MM-DD形式。名称は会社名・屋号・個人名など何でもOK。</p>
+    </div>
+  </div>
+</div>
+
+<!-- Preview -->
+<div id="preview-screen">
+  <div class="preview-header">
+    <span class="count-badge" id="preview-count-badge">0件</span>
+    <span class="plan-label" id="preview-plan-label"></span>
+    <span class="preview-hint">右上の「全件PDF印刷・保存」ボタンで一括出力できます。印刷ダイアログで「PDFとして保存」を選択してください。</span>
+  </div>
+  <div id="contracts-area"></div>
+</div>
+
+<script>
+  // ===== 契約タイプ定義 =====
+  const TYPES = {
+    primary: {
+      label: '一次代理店契約書',
+      short: '一次代理店',
+      desc: '甲URURIA ↔ 乙一次代理店（二者間）',
+      amounts: [500, 650],
+      parties: 'two',
+      title2: '一次代理店契約書',
+      lead: '一次代理店（乙）の情報をCSVにまとめてアップロードすると、全件分の契約書を一括でPDF出力できます。',
+    },
+    direct: {
+      label: 'URURIA直 二次代理店契約書',
+      short: 'URURIA直 二次代理店',
+      desc: '甲URURIA ↔ 乙二次代理店（二者間）',
+      amounts: [200, 320],
+      parties: 'two',
+      title2: '二次代理店契約書',
+      lead: '二次代理店（乙）の情報をCSVにまとめてアップロードすると、全件分の契約書を一括でPDF出力できます。',
+    },
+    secondary3: {
+      label: '二次代理店契約書（三社契約）',
+      short: '二次代理店（三社契約）',
+      desc: '甲URURIA ＋ 乙一次 ＋ 丙二次（三者間）',
+      amounts: [200, 320],
+      parties: 'three',
+      title2: '代理店契約書',
+      lead: '乙（一次代理店）と丙（二次代理店）の情報をCSVにまとめてアップロードすると、全件分の三者間契約書を一括でPDF出力できます。',
+    },
+  };
+
+  let contractType = 'primary';
+  let planAmount = TYPES.primary.amounts[0];
+
+  // ===== タイプ選択UI =====
+  function renderTypeSelect() {
+    const wrap = document.getElementById('type-select');
+    wrap.innerHTML = '';
+    Object.keys(TYPES).forEach(key => {
+      const t = TYPES[key];
+      const card = document.createElement('div');
+      card.className = 'type-card' + (key === contractType ? ' active' : '');
+      card.onclick = () => setType(key);
+      card.innerHTML = `<div class="tc-title">${t.short}</div><div class="tc-desc">${t.desc}</div>`;
+      wrap.appendChild(card);
+    });
+    document.getElementById('type-badge').textContent = TYPES[contractType].desc;
+  }
+
+  function setType(key) {
+    contractType = key;
+    planAmount = TYPES[key].amounts[0];
+    renderTypeSelect();
+    renderPlanToggle();
+    renderFormatHint();
+    document.getElementById('upload-lead').textContent = TYPES[key].lead;
+    rerenderIfLoaded();
+  }
+
+  // ===== 金額プランUI =====
+  function renderPlanToggle() {
+    const wrap = document.getElementById('plan-toggle');
+    wrap.innerHTML = '';
+    TYPES[contractType].amounts.forEach(a => {
+      const b = document.createElement('button');
+      b.textContent = a + '万円プラン';
+      b.className = (a === planAmount ? 'active' : '');
+      b.onclick = () => setAmount(a);
+      wrap.appendChild(b);
+    });
+    document.getElementById('preview-plan-label').textContent = planAmount + '万円プラン';
+  }
+
+  function setAmount(n) {
+    planAmount = n;
+    renderPlanToggle();
+    rerenderIfLoaded();
+  }
+
+  function rerenderIfLoaded() {
+    const area = document.getElementById('contracts-area');
+    if (area.children.length > 0 && window._loadedRows && window._loadedRows.length) {
+      renderContracts(window._loadedRows);
+    }
+  }
+
+  // ===== CSVテンプレート =====
+  function csvSpec() {
+    if (TYPES[contractType].parties === 'three') {
+      return {
+        header: '乙の名称,乙の代表者名,乙の郵便番号,乙の住所,乙の建物名,乙の電話番号,丙の名称,丙の代表者名,丙の郵便番号,丙の住所,丙の建物名,丙の電話番号,契約日',
+        rows: ['〇〇サロン,田中 花子,100-0001,東京都千代田区〇〇1-2-3,グランドビル201,03-0000-0000,山田 美咲,山田 美咲,530-0001,大阪府大阪市北区〇〇2-3-4,,090-0000-0000,2026-06-01'],
+        file: '三社契約_代理店情報テンプレート.csv',
+      };
+    }
+    return {
+      header: '名称,代表者名,郵便番号,住所,建物名,電話番号,契約日',
+      rows: [
+        '株式会社KANAU,室原 優輝,860-0848,熊本県熊本市中央区南坪井町5-27,ロマージュ上通り並木坂503,090-1871-5879,2026-05-20',
+        '〇〇サロン,山田 花子,100-0001,東京都千代田区〇〇1-2-3,,03-0000-0000,2026-06-01',
+      ],
+      file: (contractType === 'primary' ? '一次代理店' : '二次代理店') + '情報テンプレート.csv',
+    };
+  }
+
+  function renderFormatHint() {
+    const spec = csvSpec();
+    document.getElementById('format-code').textContent = [spec.header, ...spec.rows].join('\n');
+  }
+
+  function downloadTemplate() {
+    const spec = csvSpec();
+    const csv = '﻿' + [spec.header, ...spec.rows].join('\n'); // BOM付きUTF-8
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    a.download = spec.file;
+    a.click();
+  }
+
+  // ===== ファイル処理 =====
+  const fileInput = document.getElementById('file-input');
+  const dropZone  = document.getElementById('drop-zone');
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+
+  function loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const buf = e.target.result;
+      const utf8 = new TextDecoder('utf-8').decode(buf);
+      const text = utf8.includes('�')
+        ? new TextDecoder('shift-jis').decode(buf)
+        : utf8.replace(/^﻿/, '');
+      const rows = parseCSV(text);
+      if (!rows.length) { alert('データが読み込めませんでした。契約タイプとCSVのフォーマットが一致しているか確認してください。'); return; }
+      renderContracts(rows);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ===== CSVパーサ =====
+  function parseCSV(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return [];
+    const headers = parseRow(lines[0]);
+    const objs = lines.slice(1).map(line => {
+      const vals = parseRow(line);
+      const obj = {};
+      headers.forEach((h, i) => { obj[h.trim()] = (vals[i] || '').trim(); });
+      return obj;
+    });
+    if (TYPES[contractType].parties === 'three') {
+      return objs.filter(r => r['丙の名称'] || r['乙の名称']);
+    }
+    return objs.filter(r => r['名称']);
+  }
+  function parseRow(line) {
+    const res = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') inQ = !inQ;
+      else if (line[i] === ',' && !inQ) { res.push(cur); cur = ''; }
+      else cur += line[i];
+    }
+    res.push(cur);
+    return res;
+  }
+
+  // ===== 和暦 =====
+  function toWareki(s) {
+    const [y, m, d] = s.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    let era, yr;
+    if (y > 2019 || (y === 2019 && m >= 5)) { era = '令和'; yr = y - 2018; }
+    else if (y > 1989 || (y === 1989 && (m > 1 || d >= 8))) { era = '平成'; yr = y - 1988; }
+    else { era = '昭和'; yr = y - 1925; }
+    return { era, year: yr, month: m, day: d };
+  }
+  const fmt     = w => `${w.era}${w.year}年${w.month}月${w.day}日`;
+  const fmtSig  = w => `令和　${w.year}年　　${w.month}月　${w.day}日`;
+  const addYear = w => ({ ...w, year: w.year + 1 });
+
+  // ===== レンダリング =====
+  function renderContracts(rows) {
+    window._loadedRows = rows;
+    const area = document.getElementById('contracts-area');
+    area.innerHTML = '';
+    const three = TYPES[contractType].parties === 'three';
+    rows.forEach((row, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'contract-wrapper';
+      const label = three
+        ? `${row['乙の名称'] || '乙未入力'} ／ ${row['丙の名称'] || '丙未入力'}`
+        : (row['名称'] || '（名称未入力）');
+      const html = three ? buildThreeParty(row) : buildTwoParty(row);
+      wrap.innerHTML = `<div class="contract-label">${i+1}件目：${label}</div><div class="contract">${html}</div>`;
+      area.appendChild(wrap);
+    });
+    document.getElementById('upload-screen').style.display = 'none';
+    document.getElementById('preview-screen').style.display = 'block';
+    document.getElementById('header-actions').style.display = 'flex';
+    document.getElementById('header-count').textContent = `${TYPES[contractType].short}／${rows.length}件読み込み済み`;
+    document.getElementById('preview-count-badge').textContent = `${rows.length}件`;
+    document.getElementById('preview-plan-label').textContent = `${TYPES[contractType].short}　${planAmount}万円プラン`;
+  }
+
+  function resetUpload() {
+    document.getElementById('upload-screen').style.display = 'flex';
+    document.getElementById('preview-screen').style.display = 'none';
+    document.getElementById('header-actions').style.display = 'none';
+    document.getElementById('contracts-area').innerHTML = '';
+    document.getElementById('file-input').value = '';
+  }
+
+  // ===== 二者間契約（一次代理店 ／ URURIA直二次代理店）=====
+  function buildTwoParty(row) {
+    const company = e(row['名称'] || '　　　　　　');
+    const rep     = e(row['代表者名'] || '　　　　　　');
+    const postal  = e(row['郵便番号'] || '　　　　　　');
+    const address = e(row['住所'] || '　　　　　　　　　　　　');
+    const building= row['建物名'] || '';
+    const phone   = e(row['電話番号'] || '　　　　　　');
+    const dateStr = row['契約日'] || '';
+    const w = dateStr ? toWareki(dateStr) : null;
+    const startDate = w ? fmt(w) : '　　　年　月　日';
+    const endDate   = w ? fmt(addYear(w)) : '　　　年　月　日';
+    const signDate  = w ? fmtSig(w) : '令和　　年　　月　　日';
+    const buildingLine = building ? `<p>　　　${e(building)}</p>` : '';
+    const title2 = TYPES[contractType].title2;
+    // URURIA直 二次代理店のみ、一次代理店への昇格（再仕入れ）条項を挿入
+    const grad = contractType === 'direct';
+    const off = grad ? 1 : 0;
+    const gradClause = grad ? `
+<div class="article">
+  <p class="article-header">第9条（解除以外の契約終了事由・一次代理店への昇格）</p>
+  <p>乙が、別途、一次代理店となるための初回一括購入として、合計650万円以上（税及び送料を除く）の製品を甲から購入し、甲に対して代金を一括で支払った場合、本契約は終了し、乙は甲との間で別途一次代理店契約を締結するものとする。なお、本契約に基づき乙が支払った初回一括購入の代金は、当該一次代理店への昇格のための購入額には充当されない。</p>
+</div>
+` : '';
+
+    return `
+<div class="contract-title">
+  <span class="t1">株式会社URURIA JAPAN</span>
+  <span class="t2">${title2}</span>
+</div>
+
+<p class="preamble">株式会社URURIA JAPAN（以下「甲」という。）と${company}（以下「乙」という。）は、甲の商品である別紙記載のURURIA JAPAN製品（以下「製品」という。）を、乙が甲の代理店として販売するにあたり、以下のとおり合意し、この契約（以下「本契約」という。）を締結する。</p>
+
+<div class="article">
+  <p class="article-header">第1条（代理店の指定）</p>
+  <p>1　甲は、乙に対し、製品を販売する代理権を付与し、甲の代理店として製品を第三者に販売することを委託（以下「委託業務」という。）し、乙はこれを受託する。</p>
+  <p>2　乙は、別紙「初回一括購入内訳」に基づき合計${planAmount}万円以上（税及び送料を除く）の製品を甲から購入し、甲に対して代金を一括で支払う。</p>
+  <p>3　乙は、甲の代理店として、製品及び本契約に関する細則を定める別紙「株式会社URURIA JAPAN代理店ルールブック」を理解し、そのルールを遵守することを約する。</p>
+  <p>4　乙は、別紙「代理店申込書」に虚偽のない情報を登録することを約する。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第2条（販売の方法）</p>
+  <p>1　甲は、乙が甲の代理店であるとの名称の使用を許可し、これに必要な商標等の知的財産権の利用を許可する。</p>
+  <p>2　乙は、甲の代理店であることを表示したうえ、本契約に基づき、製品を第三者（以下「導入店」という。）に販売する。</p>
+  <p>3　乙は、前項に定めるほか、製品を導入店に販売するに当たり、甲から販売方法、説明すべき内容、契約締結方法等の指示があったときは、これを遵守する。</p>
+  <p>4　乙は、甲の代理店として販売業務を行うことから、販売担当者に対して甲の指定する研修を受けさせなくてはならない。</p>
+  <p>5　甲は、製品の仕様、指定部品をその裁量で決定することができる。</p>
+  <p>6　製品の導入店への販売価格は、甲が定める定価とする。</p>
+  <p>7　甲は、乙及び導入店間の売買契約締結時に甲の担当者を同席させることができ、乙はこれを拒否することができない。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第3条（通知義務）</p>
+  <p>1　乙は、販売予定者と製品について売買契約を締結する際は、事前に甲へ通知する。</p>
+  <p>2　乙は、前項に定める通知がされなかったことにより甲に損害を与えた場合には、その損害を賠償する義務を負う。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第4条（販売代金の回収）</p>
+  <p>乙が買主に販売した製品の代金（以下「販売代金」という。）は、乙がこれを請求し、受領する。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第5条（費用）</p>
+  <p>委託業務に要する交通費、通信費その他一切の費用は、乙の負担とする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第6条（乙の説明義務）</p>
+  <p>1　乙は、甲が本契約に関する一切の事項について説明を求めたときは、これを説明しなくてはならない。</p>
+  <p>2　乙は、甲の求めがあるときは、信用状況について書面をもって説明しなくてはならない。</p>
+  <p>3　本条の規定は、本契約終了後も引き続き効力を有する。ただし2項については、特に甲に説明を求める必要性が認められるときに限る。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第7条（第三者との関係について）</p>
+  <p>1　乙は、第三者から本契約に関連（販売代理、代理店指定、名称使用、知的財産権の使用、販売後の使用状況等をすべて含む）する問い合わせ、クレーム等を受けたときは、直ちに甲にこれを通知し、対策について協議する。</p>
+  <p>2　乙は、甲と協議して決定した方針について協力して対処する。</p>
+  <p>3　乙は、甲の社会的信用、製品のブランドを維持していかなくてはならない。</p>
+  <p>4　本条の規定は、本契約終了後も引き続き効力を有する。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第8条（解除）</p>
+  <p>1　甲は、乙が合理的な理由なく別紙「株式会社URURIA JAPAN代理店ルールブック」及び本契約に違反したときは、本契約を解除することができる。ただし、甲は乙に対して、事情に応じた一定期間の猶予を与えることができる。</p>
+  <p>2　前項のほか、甲及び乙は、相手方が次条各号の事由のいずれかに該当した場合には、何らの催告を要することなく、本契約の解除をすることができる。</p>
+  <div class="sub-items">
+    <p class="sub-item">（1）本契約に定める義務に違反し、相手方から相当な期間を定めて是正の催告を受けたにもかかわらず、当該期間内に是正されなかったとき</p>
+    <p class="sub-item">（2）差押え、仮差押え、仮処分、滞納処分を受けたとき</p>
+    <p class="sub-item">（3）破産、特別清算、会社更生、民事再生の申立てがあったとき</p>
+    <p class="sub-item">（4）支払停止又は支払不能となったとき</p>
+    <p class="sub-item">（5）銀行取引停止処分を受けたとき</p>
+    <p class="sub-item">（6）監督官庁から営業停止を命じられたとき</p>
+    <p class="sub-item">（7）主要な株主・取締役の変更、事業譲渡・合併・会社分割等の組織再編その他の会社の支配に重要な影響を及ぼす事実が生じたとき</p>
+    <p class="sub-item">（8）解散したとき</p>
+    <p class="sub-item">（9）その他前各号に準ずる事由が生じたとき</p>
+  </div>
+  <p>3　前項の場合、乙は、甲が被った損害の一切を賠償するものとする。</p>
+</div>
+${gradClause}
+<div class="article">
+  <p class="article-header">第${9 + off}条（秘密保持）</p>
+  <p>1　甲及び乙は、本契約の存在及び内容、並びに本契約の締結及び履行に関連して知り得た相手方の技術上又は営業上の情報（以下、併せて「秘密情報」という。）を、次項に定める場合を除き、相手方の承諾を得ない限り、第三者に開示し若しくは漏洩し、又は本契約の目的以外に使用してはならない。ただし、以下の各号のいずれかに該当する情報は、秘密情報に含まれないものとする。</p>
+  <div class="sub-items">
+    <p class="sub-item">（1）開示を受けた時に既に保有していた情報</p>
+    <p class="sub-item">（2）開示を受けた後、秘密保持義務を負うことなく第三者から正当に入手した情報</p>
+    <p class="sub-item">（3）開示を受けた後、相手方から開示を受けた情報に関係なく独自に取得し、又は創出した情報</p>
+    <p class="sub-item">（4）開示を受けた時に既に公知であった情報</p>
+    <p class="sub-item">（5）開示を受けた後、自己の責めに帰し得ない事由により公知となった情報</p>
+  </div>
+  <p>2　前項の規定は、以下の各号のいずれかに該当する場合には、適用しない。</p>
+  <div class="sub-items">
+    <p class="sub-item">（1）情報を受領した者が、自己若しくは関係会社の役職員又は弁護士、会計士、税理士等法律に基づき守秘義務を負う者に対して、自己と同様の義務を負わせることを条件に、必要最小限の範囲で秘密情報を開示する場合</p>
+    <p class="sub-item">（2）適用のある法令等又は金融商品取引所規則の定めに従って開示する場合</p>
+    <p class="sub-item">（3）裁判所、行政機関又はその他の政府機関の命令又は要求に基づいて秘密情報を開示する場合</p>
+  </div>
+  <p>3　甲又は乙は、前項第2号又は第3号の規定に基づき秘密情報の開示を義務付けられた場合には、事前に相手方に通知し、開示につき可能な限り相手方の指示に従うものとする。</p>
+  <p>4　本条に定める義務は本契約の終了後も存続するものとする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第${10 + off}条（個人情報の保護）</p>
+  <p>甲および乙は、本契約の遂行に際して相手方より受領した個人情報（個人情報の保護に関する法律（平成15年法律第57号）第2条第1項に定義される個人情報をいう。）を取り扱う場合には、個人情報の保護に関する法律及び本契約の定めを遵守し、本件業務の目的以外に、加工、利用、複写又は複製してはならず、これを取り扱ってはならないものとする。また、甲および乙は、法令で定める場合を除き、第三者に対して個人情報を提供してはならないものとする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第${11 + off}条（契約の有効期間）</p>
+  <p>1　本契約の有効期間は、${startDate}から${endDate}までの1年間とする。</p>
+  <p>2　前項の定めにかかわらず、期間満了の3か月前までに、甲又は乙から何らの意思表示がない場合、本契約は、同一の条件でさらに1年間更新されるものとし、その後も同様とする。</p>
+  <p>3　本契約終了後も、引き続きその効力を有する旨の記載のある規定は引き続き効力を有する。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第${12 + off}条（本契約終了後の製品の扱い）</p>
+  <p>乙は、本契約終了後、第2条1項の権利を当然に喪失する。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第${13 + off}条（反社会的勢力との取引排除）</p>
+  <p>1　甲及び乙は、それぞれ相手方に対し、次の各号の事項を確約する。</p>
+  <div class="sub-items">
+    <p class="sub-item">（1）自らが、暴力団、暴力団員、暴力団員でなくなった時から5年を経過しない者、暴力団準構成員、暴力団関係企業、総会屋、社会運動等標ぼうゴロ、特殊知能暴力集団その他これらに準ずる者（以下総称して「反社会的勢力」という）ではないこと。</p>
+    <p class="sub-item">（2）反社会的勢力と次の関係を有していないこと。</p>
+    <p class="sub-sub-item">ア　自ら若しくは第三者の不正の利益を図る目的、又は第三者に損害を与える目的をもって反社会的勢力を利用していると認められる関係</p>
+    <p class="sub-sub-item">イ　反社会的勢力に対して資金等を提供し、又は便宜を供与するなど反社会的勢力の維持、運営に協力し、又は関与している関係</p>
+    <p class="sub-item">（3）自らの役員（取締役、執行役、執行役員、監査役、相談役、会長その他、名称の如何を問わず、経営に実質的に関与している者をいう）が反社会的勢力ではないこと、及び反社会的勢力と社会的に非難されるべき関係を有していないこと。</p>
+    <p class="sub-item">（4）反社会的勢力に自己の名義を使用させ、本契約を締結するものではないこと。</p>
+    <p class="sub-item">（5）自ら又は第三者を利用して本契約に関して次の行為をしないこと。</p>
+    <p class="sub-sub-item">ア　暴力的な要求行為</p>
+    <p class="sub-sub-item">イ　法的な責任を超えた不当な要求行為</p>
+    <p class="sub-sub-item">ウ　取引に関して、脅迫的な言動をし、又は暴力を用いる行為</p>
+    <p class="sub-sub-item">エ　風説を流布し、偽計又は威力を用いて相手方の業務を妨害し、又は信用を毀損する行為</p>
+    <p class="sub-sub-item">オ　その他前各号に準ずる行為</p>
+  </div>
+  <p>2　甲又は乙の一方について、次のいずれかに該当した場合には、その相手方は、何らの催告を要せずして、本契約を解除することができる。</p>
+  <div class="sub-items">
+    <p class="sub-item">（1）前項(1)ないし(3)の確約に反する表明をしたことが判明した場合</p>
+    <p class="sub-item">（2）前項(4)の確約に反し契約をしたことが判明した場合</p>
+    <p class="sub-item">（3）前項(5)の確約に反した行為をした場合</p>
+  </div>
+  <p>3　前項の規定により本契約が解除された場合には、解除された者は、その相手方に対し、相手方の被った損害を賠償するものとする。</p>
+  <p>4　第2項の規定により本契約が解除された場合には、解除された者は、解除により生じる損害について、その相手方に対し一切の請求を行わない。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第${14 + off}条（合意管轄）</p>
+  <p>本契約に関する一切の紛争は、東京地方裁判所（あるいは東京簡易裁判所）をもって第一審の専属的合意管轄裁判所とする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第${15 + off}条（協議）</p>
+  <p>甲及び乙は、本契約に定めのない事項及び本契約に関する解釈上の疑義については、誠実に協議の上、解決するものとする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第${16 + off}条（電子契約）</p>
+  <p>1　甲及び乙は、本契約を電子契約サービスにより電磁的に締結することに合意する。</p>
+  <p>2　本契約は、書面によらず、電子契約サービス上で甲及び乙の双方が電子署名（電子署名及び認証業務に関する法律第2条第1項に定める電子署名をいう。）を行った時点をもって成立するものとする。</p>
+  <p>3　甲及び乙は、本契約に係る電磁的記録を本契約書の原本とし、その電磁的記録が、書面により作成し記名押印した契約書と同一の効力を有することを相互に確認する。</p>
+  <p>4　甲及び乙は、本契約に係る電磁的記録を、契約期間中及び契約終了後において、各自の責任において適切に保管・管理するものとする。</p>
+</div>
+
+<hr class="hr-line">
+<p>本契約の成立を証するため、本契約書の電磁的記録を作成し、甲及び乙は合意のうえ電子署名を行い、それぞれその電磁的記録を保管する。</p>
+
+<div class="signature-section">
+  <p class="sig-date">${signDate}</p>
+  <div class="party-block">
+    <p>甲　　京都府京都市中央区船屋町371</p>
+    <p>　　　グランシャリオ勝屋2階</p>
+    <p>　　　株式会社URURIA JAPAN　　代表取締役　髙橋　亜矢</p>
+    <p>　　　【電子署名】</p>
+  </div>
+  <div class="party-block">
+    <p>乙　　〒${postal}</p>
+    <p>　　　${address}</p>
+    ${buildingLine}
+    <p>　　　電話番号　${phone}</p>
+    <p>　　　${company}</p>
+    <p>　　　${rep}</p>
+    <p>　　　【電子署名】</p>
+  </div>
+</div>`;
+  }
+
+  // ===== 三者間契約（二次代理店・三社契約）=====
+  function buildThreeParty(row) {
+    const oName   = e(row['乙の名称']     || '　　　　　　');
+    const oRep    = e(row['乙の代表者名'] || '　　　　　　');
+    const oPostal = e(row['乙の郵便番号'] || '　　　　　　');
+    const oAddr   = e(row['乙の住所']     || '　　　　　　　　　　　　　　');
+    const oBldg   = row['乙の建物名']     || '';
+    const oPhone  = e(row['乙の電話番号'] || '　　　　　　　');
+    const hName   = e(row['丙の名称']     || '　　　　　　');
+    const hRep    = e(row['丙の代表者名'] || '　　　　　　');
+    const hPostal = e(row['丙の郵便番号'] || '　　　　　　');
+    const hAddr   = e(row['丙の住所']     || '　　　　　　　　　　　　　　');
+    const hBldg   = row['丙の建物名']     || '';
+    const hPhone  = e(row['丙の電話番号'] || '　　　　　　　');
+    const dateStr = row['契約日']         || '';
+    const w = dateStr ? toWareki(dateStr) : null;
+    const startDate = w ? fmt(w) : '　　　年　月　日';
+    const endDate   = w ? fmt(addYear(w)) : '　　　年　月　日';
+    const signDate  = w ? fmtSig(w) : '令和　　年　　月　　日';
+    const oBldgLine = oBldg ? `<p>　　　${e(oBldg)}</p>` : '';
+    const hBldgLine = hBldg ? `<p>　　　${e(hBldg)}</p>` : '';
+
+    return `
+<div class="contract-title">
+  <span class="t1">株式会社URURIA JAPAN</span>
+  <span class="t2">代理店契約書</span>
+</div>
+
+<p class="preamble">株式会社URURIA JAPAN（以下「甲」という。）、${oName}（以下「乙」という。）、及び${hName}（以下「丙」という。）は、甲の商品である別紙記載の株式会社URURIA JAPAN製品（以下「製品」という。）を、丙が甲の代理店として販売するにあたり、以下のとおり合意し、この契約（以下「本契約」という。）を締結する。</p>
+
+<div class="article">
+  <p class="article-header">第1条（代理店の指定）</p>
+  <p>1　甲は、丙に対し、製品を販売する代理権を付与し、甲の代理店として製品を第三者に販売することを委託（以下「委託業務」という。）し、丙はこれを受託する。</p>
+  <p>2　丙は、別紙「初回一括購入内訳」に基づき合計${planAmount}万円以上（税及び送料を除く）の製品を乙から購入し、乙に対して代金を一括で支払う。</p>
+  <p>3　乙及び丙は、甲の代理店として、製品及び本契約に関する細則を定める別紙「株式会社URURIA JAPAN代理店ルールブック」を理解し、そのルールを遵守することを約する。</p>
+  <p>4　丙は、別紙「代理店申込書」に虚偽のない情報を登録することを約する。</p>
+  <p>5　乙は、丙が本契約及び別紙「株式会社URURIA JAPAN代理店ルールブック」の定めを遵守しているか管理監督し、甲の求めに応じて甲に報告することを約する。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第2条（販売の方法）</p>
+  <p>1　甲は、丙が甲の代理店であるとの名称の使用を許可し、これに必要な商標等の知的財産権の利用を許可する。</p>
+  <p>2　丙は、甲の代理店であることを表示したうえ、本契約に基づき、別紙「代理店マニュアル」に定める方法で製品を第三者（以下「導入店」という。）に販売しなければならない。</p>
+  <p>3　丙は、前項に定めるほか、製品を導入店に販売するに当たり、乙から販売方法、説明すべき内容、契約締結方法等の指示があったときは、これを遵守する。</p>
+  <p>4　丙は、甲の代理店として販売業務を行うことから、販売担当者に対して甲の指定する研修を受けさせなくてはならない。</p>
+  <p>5　乙は、丙に販売した製品について、丙による販売先を把握して管理し、甲の定める方法で甲に報告しなければならない。</p>
+  <p>6　乙は、丙が「代理店マニュアル」に則り導入店に販売しているか監督しなければならない。</p>
+  <p>7　甲は、製品の仕様、指定部品をその裁量で決定することができる。</p>
+  <p>8　製品の導入店への販売価格は、甲が定める定価とする。</p>
+  <p>9　乙は、丙及び導入店間の売買契約締結時に乙の担当者を同席させることができ、丙はこれを拒否することができない。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第3条（通知義務）</p>
+  <p>1　丙は、販売予定者と製品について売買契約を締結する際は、事前に乙へ通知する。</p>
+  <p>2　丙は、前項に定める通知がされなかったことにより甲又は乙に損害を与えた場合には、その損害を賠償する義務を負う。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第4条（販売代金の回収）</p>
+  <p>丙が買主に販売した製品の代金（以下「販売代金」という。）は、丙がこれを請求し、受領する。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第5条（費用）</p>
+  <p>委託業務に要する交通費、通信費その他一切の費用は、丙の負担とする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第6条（丙の説明義務）</p>
+  <p>1　丙は、乙が本契約に関する一切の事項について説明を求めたときは、これを説明しなくてはならない。</p>
+  <p>2　丙は、乙の求めがあるときは、信用状況について書面をもって説明しなくてはならない。</p>
+  <p>3　本条の規定は、本契約終了後も引き続き効力を有する。ただし2項については、特に乙に説明を求める必要性が認められるときに限る。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第7条（第三者との関係について）</p>
+  <p>1　丙は、第三者から本契約に関連（販売代理、代理店指定、名称使用、知的財産権の使用、販売後の使用状況等をすべて含む）する問い合わせ、クレーム等を受けたときは、直ちに甲及び乙にこれを通知し、対策について協議する。</p>
+  <p>2　丙は、甲及び乙と協議して決定した方針について協力して対処する。</p>
+  <p>3　丙は、甲の社会的信用、製品のブランドを維持していかなくてはならない。</p>
+  <p>4　本条の規定は、本契約終了後も引き続き効力を有する。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第8条（解除）</p>
+  <p>1　甲又は乙は、丙が合理的な理由なく別紙「株式会社URURIA JAPAN代理店ルールブック」及び本契約に違反したときは、本契約を解除することができる。ただし、甲又は乙は、丙に対して、事情に応じた一定期間の猶予を与えることができる。</p>
+  <p>2　前項のほか、甲、乙及び丙は、相手方が次条各号の事由のいずれかに該当した場合には、何らの催告を要することなく、本契約の解除をすることができる。</p>
+  <div class="sub-items">
+    <p class="sub-item">（1）本契約に定める義務に違反し、相手方から相当な期間を定めて是正の催告を受けたにもかかわらず、当該期間内に是正されなかったとき</p>
+    <p class="sub-item">（2）差押え、仮差押え、仮処分、滞納処分を受けたとき</p>
+    <p class="sub-item">（3）破産、特別清算、会社更生、民事再生の申立てがあったとき</p>
+    <p class="sub-item">（4）支払停止又は支払不能となったとき</p>
+    <p class="sub-item">（5）銀行取引停止処分を受けたとき</p>
+    <p class="sub-item">（6）監督官庁から営業停止を命じられたとき</p>
+    <p class="sub-item">（7）主要な株主・取締役の変更、事業譲渡・合併・会社分割等の組織再編その他の会社の支配に重要な影響を及ぼす事実が生じたとき</p>
+    <p class="sub-item">（8）解散したとき</p>
+    <p class="sub-item">（9）その他前各号に準ずる事由が生じたとき</p>
+  </div>
+  <p>3　前項の場合、丙は、甲及び乙が被った損害の一切を賠償するものとする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第9条（解除以外の契約終了事由・一次代理店への昇格）</p>
+  <p>丙が、別途、一次代理店となるための初回一括購入として、合計650万円以上（税及び送料を除く）の製品を甲から購入し、甲に対して代金を一括で支払った場合、本契約は終了し、丙は甲との間で別途一次代理店契約を締結するものとする。なお、本契約に基づき丙が支払った初回一括購入の代金は、当該一次代理店への昇格のための購入額には充当されない。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第10条（秘密保持）</p>
+  <p>1　甲、乙及び丙は、本契約の存在及び内容、並びに本契約の締結及び履行に関連して知り得た相手方の技術上又は営業上の情報（以下、併せて「秘密情報」という。）を、次項に定める場合を除き、相手方の承諾を得ない限り、第三者に開示し若しくは漏洩し、又は本契約の目的以外に使用してはならない。ただし、以下の各号のいずれかに該当する情報は、秘密情報に含まれないものとする。</p>
+  <div class="sub-items">
+    <p class="sub-item">（1）開示を受けた時に既に保有していた情報</p>
+    <p class="sub-item">（2）開示を受けた後、秘密保持義務を負うことなく第三者から正当に入手した情報</p>
+    <p class="sub-item">（3）開示を受けた後、相手方から開示を受けた情報に関係なく独自に取得し、又は創出した情報</p>
+    <p class="sub-item">（4）開示を受けた時に既に公知であった情報</p>
+    <p class="sub-item">（5）開示を受けた後、自己の責めに帰し得ない事由により公知となった情報</p>
+  </div>
+  <p>2　前項の規定は、以下の各号のいずれかに該当する場合には、適用しない。</p>
+  <div class="sub-items">
+    <p class="sub-item">（1）情報を受領した者が、自己若しくは関係会社の役職員又は弁護士、会計士、税理士等法律に基づき守秘義務を負う者に対して、自己と同様の義務を負わせることを条件に、必要最小限の範囲で秘密情報を開示する場合</p>
+    <p class="sub-item">（2）適用のある法令等又は金融商品取引所規則の定めに従って開示する場合</p>
+    <p class="sub-item">（3）裁判所、行政機関又はその他の政府機関の命令又は要求に基づいて秘密情報を開示する場合</p>
+  </div>
+  <p>3　甲、乙又は丙は、前項第2号又は第3号の規定に基づき秘密情報の開示を義務付けられた場合には、事前に相手方に通知し、開示につき可能な限り相手方の指示に従うものとする。</p>
+  <p>4　本条に定める義務は本契約の終了後も存続するものとする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第11条（個人情報の保護）</p>
+  <p>甲、乙及び丙は、本契約の遂行に際して相手方より受領した個人情報（個人情報の保護に関する法律（平成15年法律第57号）第2条第1項に定義される個人情報をいう。）を取り扱う場合には、個人情報の保護に関する法律及び本契約の定めを遵守し、本件業務の目的以外に、加工、利用、複写又は複製してはならず、これを取り扱ってはならないものとする。また、甲、乙及び丙は、法令で定める場合を除き、第三者に対して個人情報を提供してはならないものとする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第12条（契約の有効期間）</p>
+  <p>1　本契約の有効期間は、${startDate}から${endDate}までの1年間とする。</p>
+  <p>2　前項の定めにかかわらず、期間満了の3か月前までに、甲、乙又は丙から何らの意思表示がない場合、本契約は、同一の条件でさらに1年間更新されるものとし、その後も同様とする。</p>
+  <p>3　本契約終了後も、引き続きその効力を有する旨の記載のある規定は引き続き効力を有する。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第13条（本契約解除及び契約期間満了による本契約終了後の製品の扱い）</p>
+  <p>丙は、本契約解除及び契約期間満了による本契約終了後、第2条1項の権利を当然に喪失する。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第14条（反社会的勢力との取引排除）</p>
+  <p>1　甲、乙及び丙は、それぞれ相手方に対し、次の各号の事項を確約する。</p>
+  <div class="sub-items">
+    <p class="sub-item">（1）自らが、暴力団、暴力団員、暴力団員でなくなった時から5年を経過しない者、暴力団準構成員、暴力団関係企業、総会屋、社会運動等標ぼうゴロ、特殊知能暴力集団その他これらに準ずる者（以下総称して「反社会的勢力」という）ではないこと。</p>
+    <p class="sub-item">（2）反社会的勢力と次の関係を有していないこと。</p>
+    <p class="sub-sub-item">ア　自ら若しくは第三者の不正の利益を図る目的、又は第三者に損害を与える目的をもって反社会的勢力を利用していると認められる関係</p>
+    <p class="sub-sub-item">イ　反社会的勢力に対して資金等を提供し、又は便宜を供与するなど反社会的勢力の維持、運営に協力し、又は関与している関係</p>
+    <p class="sub-item">（3）自らの役員（取締役、執行役、執行役員、監査役、相談役、会長その他、名称の如何を問わず、経営に実質的に関与している者をいう）が反社会的勢力ではないこと、及び反社会的勢力と社会的に非難されるべき関係を有していないこと。</p>
+    <p class="sub-item">（4）反社会的勢力に自己の名義を使用させ、本契約を締結するものではないこと。</p>
+    <p class="sub-item">（5）自ら又は第三者を利用して本契約に関して次の行為をしないこと。</p>
+    <p class="sub-sub-item">ア　暴力的な要求行為</p>
+    <p class="sub-sub-item">イ　法的な責任を超えた不当な要求行為</p>
+    <p class="sub-sub-item">ウ　取引に関して、脅迫的な言動をし、又は暴力を用いる行為</p>
+    <p class="sub-sub-item">エ　風説を流布し、偽計又は威力を用いて相手方の業務を妨害し、又は信用を毀損する行為</p>
+    <p class="sub-sub-item">オ　その他前各号に準ずる行為</p>
+  </div>
+  <p>2　甲又は丙の一方について、次のいずれかに該当した場合には、その相手方は、何らの催告を要せずして、本契約を解除することができる。</p>
+  <div class="sub-items">
+    <p class="sub-item">（1）前項(1)ないし(3)の確約に反する表明をしたことが判明した場合</p>
+    <p class="sub-item">（2）前項(4)の確約に反し契約をしたことが判明した場合</p>
+    <p class="sub-item">（3）前項(5)の確約に反した行為をした場合</p>
+  </div>
+  <p>3　前項の規定により本契約が解除された場合には、解除された者は、その相手方に対し、相手方の被った損害を賠償するものとする。</p>
+  <p>4　第2項の規定により本契約が解除された場合には、解除された者は、解除により生じる損害について、その相手方に対し一切の請求を行わない。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第15条（合意管轄）</p>
+  <p>本契約に関する一切の紛争は、東京地方裁判所（あるいは東京簡易裁判所）をもって第一審の専属的合意管轄裁判所とする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第16条（協議）</p>
+  <p>甲、乙及び丙は、本契約に定めのない事項及び本契約に関する解釈上の疑義については、誠実に協議の上、解決するものとする。</p>
+</div>
+
+<div class="article">
+  <p class="article-header">第17条（電子契約）</p>
+  <p>1　甲、乙及び丙は、本契約を電子契約サービスにより電磁的に締結することに合意する。</p>
+  <p>2　本契約は、書面によらず、電子契約サービス上で甲、乙及び丙の全員が電子署名（電子署名及び認証業務に関する法律第2条第1項に定める電子署名をいう。）を行った時点をもって成立するものとする。</p>
+  <p>3　甲、乙及び丙は、本契約に係る電磁的記録を本契約書の原本とし、その電磁的記録が、書面により作成し記名押印した契約書と同一の効力を有することを相互に確認する。</p>
+  <p>4　甲、乙及び丙は、本契約に係る電磁的記録を、契約期間中及び契約終了後において、各自の責任において適切に保管・管理するものとする。</p>
+</div>
+
+<hr class="hr-line">
+<p>本契約の成立を証するため、本契約書の電磁的記録を作成し、甲、乙及び丙は合意のうえ電子署名を行い、それぞれその電磁的記録を保管する。</p>
+
+<div class="signature-section">
+  <p class="sig-date">${signDate}</p>
+  <div class="party-block">
+    <p>甲　　京都府京都市中央区船屋町371</p>
+    <p>　　　グランシャリオ勝屋2階</p>
+    <p>　　　株式会社URURIA JAPAN　　代表取締役　髙橋　亜矢</p>
+    <p>　　　【電子署名】</p>
+  </div>
+  <div class="party-block">
+    <p>乙　　〒${oPostal}</p>
+    <p>　　　${oAddr}</p>
+    ${oBldgLine}
+    <p>　　　電話番号　${oPhone}</p>
+    <p>　　　${oName}</p>
+    <p>　　　${oRep}</p>
+    <p>　　　【電子署名】</p>
+  </div>
+  <div class="party-block">
+    <p>丙　　〒${hPostal}</p>
+    <p>　　　${hAddr}</p>
+    ${hBldgLine}
+    <p>　　　電話番号　${hPhone}</p>
+    <p>　　　${hName}</p>
+    <p>　　　${hRep}</p>
+    <p>　　　【電子署名】</p>
+  </div>
+</div>`;
+  }
+
+  function e(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ===== 初期化 =====
+  renderTypeSelect();
+  renderPlanToggle();
+  renderFormatHint();
+  document.getElementById('upload-lead').textContent = TYPES[contractType].lead;
+</script>
+</body>
+</html>
